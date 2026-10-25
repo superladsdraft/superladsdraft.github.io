@@ -36,6 +36,7 @@
     return {
       elements: Object.fromEntries(boot.elements.map((e) => [e.id, e])),
       teams: Object.fromEntries(boot.teams.map((t) => [t.id, t.short_name])),
+      teamCodes: Object.fromEntries(boot.teams.map((t) => [t.id, t.code])),
       positions: Object.fromEntries(boot.element_types.map((t) => [t.id, t.singular_name_short])),
       squad: boot.squad,
       fixturesByTeam,
@@ -65,6 +66,7 @@
       id,
       name: el.web_name,
       team: ctx.teams[el.team] || "",
+      teamCode: ctx.teamCodes[el.team] || null,
       type: el.element_type,
       position: ctx.positions[el.element_type] || "",
       minutes: stats.minutes,

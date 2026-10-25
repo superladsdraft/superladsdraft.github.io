@@ -236,6 +236,13 @@
     return `<span class="flag flag-${level}" title="${esc(a.news || "")}">⚠ ${esc(chance)}${reason ? ` · ${esc(reason)}` : ""}</span>`;
   }
 
+  // FPL's own kit images (keepers get the keeper shirt). If one doesn't load, the status badge still shows.
+  function shirtUrl(p) {
+    if (!p.teamCode) return "";
+    const keeper = p.position === "GKP" ? "_1" : "";
+    return `https://fantasy.premierleague.com/dist/img/shirts/standard/shirt_${p.teamCode}${keeper}-66.webp`;
+  }
+
   // Every row is the same three lines (name, stats, match) so both teams line up.
   function playerRow(p) {
     const status = STATUS[p.status];
@@ -250,7 +257,9 @@
     const live = p.matches.some((f) => f.started && !f.done);
     return `
       <li class="pl st-${p.status}${p.subOut ? " is-out" : ""}">
-        <span class="pl-status" title="${status.label}" aria-label="${status.label}">${status.icon}</span>
+        <span class="pl-kit"${p.teamCode ? ` style="background-image:url('${shirtUrl(p)}')"` : ""}>
+          <span class="pl-status" title="${status.label}" aria-label="${status.label}">${status.icon}</span>
+        </span>
         <span class="pl-main">
           <span class="pl-line pl-name"><span class="pl-name-text">${esc(p.name)}</span>${roleTag(p)}${arrow}</span>
           <span class="pl-line pl-stats">${stats ? esc(stats) : availabilityFlag(p)}</span>
