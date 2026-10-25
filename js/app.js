@@ -240,7 +240,9 @@
   function playerRow(p) {
     const status = STATUS[p.status];
     const arrow = p.subIn
-      ? '<span class="sub-tag in" title="Auto-subbed on">▲</span>'
+      ? p.subPending
+        ? `<span class="sub-tag in is-pending" title="Comes on for a starter who didn't play, if they play">▲</span>`
+        : '<span class="sub-tag in" title="Auto-subbed on">▲</span>'
       : p.subOut
         ? '<span class="sub-tag out" title="Auto-subbed off">▼</span>'
         : "";
@@ -350,7 +352,7 @@
       </div>
       <div class="fixtures">${fixtures}</div>
       <p class="note">${note}</p>
-      ${started ? `<p class="legend">${legend}</p><p class="legend">MP minutes · G goals · A assists · CS clean sheet · GC goals conceded · S saves · DC defensive contributions · B bonus (* provisional) · YC/RC cards</p>` : ""}`;
+      ${started ? `<p class="legend">${legend}</p><p class="legend"><span><span class="key-done">8</span> played, points banked</span><span><span class="key-live">3</span> playing now</span><span><span class="key-todo">0</span> still to play</span><span>▲▼ auto-subs (<span class="key-pending">▲</span> comes on if they play)</span></p><p class="legend">MP minutes · G goals · A assists · CS clean sheet · GC goals conceded · S saves · DC defensive contributions · B bonus (* provisional) · YC/RC cards</p>` : ""}`;
   }
 
   function renderTable() {

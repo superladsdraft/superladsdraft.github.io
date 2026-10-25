@@ -106,8 +106,9 @@
 
   // A manager's team for the gameweek, with auto-subs made the way FPL makes them:
   // each starter who didn't play is swapped for the first bench player, in bench
-  // order, who did play and keeps the formation legal. A bench player who might
-  // still come on holds up the swap until we know.
+  // order, who keeps the formation legal and hasn't already missed out. If that
+  // bench player's match hasn't happened yet they come in provisionally (pending),
+  // and if they then don't play either, the next refresh moves on to the next one.
   // fplSubs: subs FPL has already made (finished gameweeks come with them applied).
   function lineup(ctx, picks, fplSubs = []) {
     const squad = picks
@@ -123,10 +124,10 @@
       for (const sub of bench) {
         if (sub.used || !fits(ctx, xi, i, sub)) continue;
         if (sub.status === "dnp") continue;
-        if (sub.minutes === 0) break;
+        const pending = sub.minutes === 0;
         sub.used = true;
-        xi[i] = { ...sub, subIn: true };
-        subs.push({ out: starter, in: sub });
+        xi[i] = { ...sub, subIn: true, subPending: pending };
+        subs.push({ out: starter, in: sub, pending });
         break;
       }
     });

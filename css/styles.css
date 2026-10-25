@@ -1412,8 +1412,37 @@ details[open] .expand-hint::after {
 }
 
 .st-upcoming .pl-pts,
-.st-waiting .pl-pts {
+.st-waiting .pl-pts,
+.st-dnp .pl-pts {
   color: var(--muted);
+}
+
+/* Starters coloured by where their match is at: points banked, coming in now, or still to come. */
+.players:not(.bench) .st-played .pl-name-text,
+.players:not(.bench) .st-played .pl-pts,
+.key-done {
+  color: var(--good);
+}
+
+.players:not(.bench) .st-playing .pl-pts,
+.key-live {
+  color: var(--live);
+}
+
+.key-todo {
+  color: var(--muted);
+}
+
+.key-done,
+.key-live,
+.key-todo {
+  margin-right: 3px;
+  font-weight: 800;
+}
+
+.sub-tag.in.is-pending,
+.key-pending {
+  color: var(--pending);
 }
 
 .role {
