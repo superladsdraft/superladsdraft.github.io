@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "site",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "http.server", "8000", "--bind", "127.0.0.1"],
+      "port": 8000
+    },
+    {
+      "name": "fpl-relay",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["worker/dev.mjs"],
+      "port": 8787
+    }
+  ]
+}

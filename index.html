@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Super Ladz Draft</title>
+  <meta name="description" content="Live tracker for the Super Lads FPL Draft head-to-head league.">
+  <meta name="theme-color" content="#37003c">
+  <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+  <link rel="preload" href="assets/fonts/SuperchargeHalftone.otf" as="font" type="font/otf" crossorigin>
+  <link rel="preload" href="assets/fonts/Supercharge.otf" as="font" type="font/otf" crossorigin>
+  <script>
+    // Apply the saved theme before the page paints, so it never flashes the wrong colours.
+    (function () {
+      var theme = null;
+      try { theme = localStorage.getItem("sld-theme"); } catch (e) {}
+      if (theme !== "light" && theme !== "dark" && theme !== "barbie") {
+        theme = window.matchMedia && matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      }
+      document.documentElement.setAttribute("data-theme", theme);
+    })();
+  </script>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <header class="masthead">
+    <div class="wrap masthead-inner">
+      <a class="brand" href="#live">
+        <span class="brand-title">Super Lads</span>
+        <span class="brand-sub">Draft League · <span data-season></span></span>
+      </a>
+      <div class="theme-switch" id="theme-switch" role="radiogroup" aria-label="Theme"></div>
+    </div>
+    <nav class="tabs" id="tabs" aria-label="Sections"></nav>
+  </header>
+
+  <main class="wrap view" id="view" tabindex="-1"></main>
+  <dialog class="sheet" id="sheet"></dialog>
+
+  <footer class="wrap footer">
+    <p>Live data from the official FPL Draft API · Built for the Super Lads</p>
+    <p>Headings in Supercharge by Iconian Fonts</p>
+  </footer>
+
+  <script src="data/league.js"></script>
+  <script src="js/scoring.js"></script>
+  <script src="js/fpl.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
