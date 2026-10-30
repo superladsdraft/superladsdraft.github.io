@@ -24,10 +24,29 @@ The worker lives on Cloudflare, completely separate from GitHub, so you can do t
 
 If you ever put the site on another address (a custom domain, say), add it to `ALLOWED_ORIGINS` at the top of `worker.js` and deploy again.
 
+## Push notifications (one time, about 5 minutes)
+
+The worker can also send phone notifications whenever there's a new waiver, free-agent signing or trade. It needs somewhere to keep everyone's sign-ups (Cloudflare's free "KV" storage) and a timer that checks for new moves every 10 minutes. Cloudflare moves its menus around now and then, so the names below might be slightly different.
+
+1. **Make the storage.** In the Cloudflare dashboard open **Storage & databases → Workers KV** (sometimes just "KV") and **Create** a namespace called `superlads-push`.
+2. **Connect it to the worker.** Open **Workers & Pages → superlads-fpl → Settings → Bindings**, choose **Add → KV namespace**, set the variable name to `PUSH` (exactly that, in capitals) and pick `superlads-push`. Save.
+3. **Add the timer.** In the same worker's **Settings**, find **Trigger events** (or **Triggers**), choose **Add → Cron trigger** and enter `*/10 * * * *` (every 10 minutes). Save.
+4. **Update the code.** Press **Edit code**, replace everything with the new [`worker.js`](worker.js) and press **Deploy**.
+5. **Check it.** Open `https://superlads-fpl.lilliesimpsonlittle.workers.dev/push/key`. You should see `{"publicKey":"B…"}` with a long string. If it says notifications aren't set up yet, the `PUSH` connection from step 2 is missing.
+
+The first time the timer runs it just notes what's already happened, so nobody gets a flood of old moves. After that, anything new sends a notification within about 10 minutes.
+
+Then, on each phone:
+
+- **Android (Chrome):** open the site, go to **Moves** and tap **Turn on**.
+- **iPhone (iOS 16.4 or newer):** open the site in Safari, tap **Share → Add to Home Screen**, open **Super Ladz** from the home screen, go to **Moves**, tap **Turn on** and **Allow**. iPhones only allow notifications for sites added to the Home Screen.
+
+Everything stays inside Cloudflare's free plan for a league our size.
+
 ## Running it on your computer
 
 ```bash
 node dev.mjs
 ```
 
-That starts the same relay at <http://localhost:8787>, which the site uses automatically when you run it locally. Needs Node 18 or newer.
+That starts the same relay at <http://localhost:8787>, which the site uses automatically when you run it locally (unless `apiBase` is set). Push storage is faked in memory, and opening <http://localhost:8787/__cron> runs the "check for new moves" job once. Needs Node 18 or newer.

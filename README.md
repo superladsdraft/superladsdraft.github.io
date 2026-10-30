@@ -21,7 +21,8 @@ Then set up the FPL relay by following [`worker/README.md`](worker/README.md). U
 
 Everything the FPL API can't tell us lives in [`data/league.js`](data/league.js): nicknames, buy-ins, payouts, the League Cup and past seasons. Edit it on GitHub (pencil icon), commit, and the site updates within a few minutes.
 
-- Manager of the Month, Top at Christmas, Champion and Runner-up are worked out from FPL automatically. Leave their `winner` as `null` unless you need to override one (to settle a tie, say).
+- Manager of the Month, Top at Christmas, Champion and Runner-up are worked out from FPL automatically. Leave their `winner` as `null` unless you need to override one.
+- Manager of the Month is a mini head-to-head league over each month's gameweeks (3 for a win, 1 for a draw, then total points). If two managers are level on both, the site splits the £10 between them unless you set a `winner`.
 - Set `paid: true` once the money has gone out.
 - The League Cup winner is filled in by hand, with the manager's key (`"dill"`, `"jake"` …), not their nickname.
 
@@ -47,7 +48,9 @@ Then open <http://localhost:8000>. When running locally the site uses the local 
 2. ✅ Cloudflare Worker for FPL data, league table (live and official), gameweek head-to-heads, and Manager of the Month, Christmas, Champion and Runner-up worked out automatically.
 3. ✅ Live gameweek page: tap a match for both teams player by player, with live points, auto-subs and provisional bonus. These live scores feed the table and Manager of the Month too.
 4. ✅ Waivers & trades page (every signing and trade, with beaten waiver claims), FPL injury flags, draftfpl.live-style player rows. Hall of Fame now lives at the bottom of Prizes.
-5. Next: League Cup, rivalry records.
+5. ✅ Manager of the Month as a monthly H2H mini-league with chance percentages and a screenshot view; waivers in pick order with a shareable image; alerts for new waivers, signings and trades.
+6. ✅ Phone push notifications for new waivers, signings and trades (needs the one-time setup in [`worker/README.md`](worker/README.md)); the site can be added to the Home Screen as an app.
+7. Next: League Cup, rivalry records.
 
 ## Credits
 

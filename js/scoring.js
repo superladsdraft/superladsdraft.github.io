@@ -106,11 +106,21 @@
     });
   }
 
-  // A manager's team for the gameweek, with auto-subs made the way FPL makes them:
-  // each starter who didn't play is swapped for the first bench player, in bench
-  // order, who keeps the formation legal and hasn't already missed out. If that
-  // bench player's match hasn't happened yet they come in provisionally (pending),
-  // and if they then don't play either, the next refresh moves on to the next one.
+  // FPL has this player down as definitely out (injured, suspended, gone), not just a doubt.
+  const ruledOut = (p) => Boolean(p.availability && (p.availability.chance === 0 || (p.availability.chance == null && p.availability.status !== "d")));
+
+  // Not contributing as things stand: their match is over and they didn't play, it's
+  // under way and they're not on the pitch, or it's still to come and FPL has them ruled out.
+  // The last two can change, so subs made for them are provisional.
+  const outForNow = (p) =>
+    p.status === "dnp" || p.status === "waiting" || (p.status === "upcoming" && p.minutes === 0 && ruledOut(p));
+
+  // A manager's team for the gameweek, with auto-subs made the way FPL makes them, but
+  // as things stand rather than waiting for the final whistle: each starter who's out for
+  // now is swapped for the first bench player, in bench order, who keeps the formation
+  // legal and isn't out for now themselves. Until the starter has definitely missed out
+  // and the sub has actually played, the swap is provisional (subPending) and the next
+  // refresh can undo it, e.g. if the starter comes off the bench.
   // fplSubs: subs FPL has already made (finished gameweeks come with them applied).
   function lineup(ctx, picks, fplSubs = []) {
     const squad = picks
@@ -122,13 +132,12 @@
     const subs = [];
 
     xi.forEach((starter, i) => {
-      if (starter.status !== "dnp") return;
+      if (!outForNow(starter)) return;
       for (const sub of bench) {
-        if (sub.used || !fits(ctx, xi, i, sub)) continue;
-        if (sub.status === "dnp") continue;
-        const pending = sub.minutes === 0;
+        if (sub.used || !fits(ctx, xi, i, sub) || outForNow(sub)) continue;
+        const pending = starter.status !== "dnp" || sub.minutes === 0;
         sub.used = true;
-        xi[i] = { ...sub, subIn: true, subPending: pending };
+        xi[i] = { ...sub, subIn: true, subPending: pending, subFor: starter.name };
         subs.push({ out: starter, in: sub, pending });
         break;
       }
@@ -139,12 +148,15 @@
       const i = xi.findIndex((p) => p.id === s.element_in);
       const out = bench.find((p) => p.id === s.element_out);
       if (i === -1 || !out) return;
-      xi[i] = { ...xi[i], subIn: true };
+      xi[i] = { ...xi[i], subIn: true, subFor: out.name };
       out.subOut = true;
+      out.subBy = xi[i].name;
       subs.push({ out, in: xi[i] });
     });
 
-    const subbedOut = subs.filter((s) => !s.out.subOut).map((s) => ({ ...s.out, subOut: true }));
+    const subbedOut = subs
+      .filter((s) => !s.out.subOut)
+      .map((s) => ({ ...s.out, subOut: true, subPending: s.pending, subBy: s.in.name }));
     const stillToCome = (p) => p.status === "playing" || p.status === "waiting" || p.status === "upcoming";
 
     return {

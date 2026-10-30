@@ -123,9 +123,11 @@
           ),
         ];
         items.push({
+          id: `t${t.id}`,
           type: t.kind === "w" ? "waiver" : "free",
           gw: t.event,
           time: t.added,
+          order: t.index, // waivers: the order claims were processed in, i.e. the pick order
           entry: byEntryId[t.entry],
           in: playerInfo(t.element_in),
           out: playerInfo(t.element_out),
@@ -138,6 +140,7 @@
       .filter((t) => t.state === "p")
       .forEach((t) => {
         items.push({
+          id: `x${t.id}`,
           type: "trade",
           gw: t.event,
           time: t.response_time || t.offer_time,
@@ -273,37 +276,205 @@
     return list;
   }
 
-  // Manager of the Month: most points across the gameweeks whose deadline is in that month.
+  // ---------- Manager of the Month ----------
+  //
+  // Each month is its own mini head-to-head league over the gameweeks whose
+  // deadline falls in that month: 3 for a win, 1 for a draw, ties split on total
+  // points scored. Level on both and the prize is shared.
+
+  const SIMULATIONS = 6000;
+  const result = (scored, conceded) => (scored > conceded ? 3 : scored === conceded ? 1 : 0);
+  let motmCache = { model: null, months: null };
+
   function motm(model) {
-    return L.motm.months.map((cfg) => {
-      const gws = model.events.filter((e) => e.month === cfg.month).map((e) => e.id);
-      const ms = model.matches.filter((m) => gws.includes(m.gw));
-      const started = ms.some((m) => m.started);
-      const complete = ms.length > 0 && ms.every((m) => m.finished);
+    if (motmCache.model !== model) motmCache = { model, months: L.motm.months.map((cfg) => motmMonth(model, cfg)) };
+    return motmCache.months;
+  }
 
-      const totals = {};
-      model.entries.forEach((e) => (totals[e.id] = 0));
-      ms.filter((m) => m.started).forEach((m) => {
-        totals[m.home] += m.homePts;
-        totals[m.away] += m.awayPts;
+  function motmMonth(model, cfg) {
+    const gws = model.events.filter((e) => e.month === cfg.month).map((e) => e.id);
+    const ms = model.matches.filter((m) => gws.includes(m.gw));
+    const started = ms.some((m) => m.started);
+    const complete = ms.length > 0 && ms.every((m) => m.finished);
+
+    const rows = new Map(
+      model.entries.map((e) => [e.id, { entry: e, scores: {}, won: 0, drawn: 0, lost: 0, pts: 0, pf: 0, live: false }])
+    );
+    ms.filter((m) => m.started).forEach((m) => {
+      [
+        [m.home, m.homePts, m.awayPts],
+        [m.away, m.awayPts, m.homePts],
+      ].forEach(([id, scored, conceded]) => {
+        const r = rows.get(id);
+        r.scores[m.gw] = scored;
+        r.pf += scored;
+        r.pts += result(scored, conceded);
+        if (scored > conceded) r.won++;
+        else if (scored === conceded) r.drawn++;
+        else r.lost++;
+        if (!m.finished) r.live = true;
       });
-      const ranking = model.entries
-        .map((e) => ({ entry: e, points: totals[e.id] }))
-        .sort((a, b) => b.points - a.points || a.entry.nickname.localeCompare(b.entry.nickname));
-      const leaders = started ? ranking.filter((r) => r.points === ranking[0].points) : [];
-      const autoWinner = complete && leaders.length === 1 ? leaders[0].entry.key : null;
-
-      return {
-        ...cfg,
-        gws,
-        started,
-        complete,
-        ranking,
-        leaders,
-        winner: cfg.winner || autoWinner,
-        tie: complete && !cfg.winner && leaders.length > 1,
-      };
     });
+
+    const table = [...rows.values()].sort(
+      (a, b) => b.pts - a.pts || b.pf - a.pf || a.entry.team.localeCompare(b.entry.team)
+    );
+    table.forEach((r, i) => {
+      const prev = table[i - 1];
+      r.rank = prev && prev.pts === r.pts && prev.pf === r.pf ? prev.rank : i + 1;
+    });
+
+    // Who each manager plays next this month.
+    const nextGw = gws.find((gw) => !gwComplete(model, gw));
+    if (nextGw) {
+      model.matches
+        .filter((m) => m.gw === nextGw)
+        .forEach((m) => {
+          rows.get(m.home).next = model.entryById[m.away];
+          rows.get(m.away).next = model.entryById[m.home];
+        });
+    }
+
+    if (started && !complete) addChances(model, cfg.month, gws, table);
+
+    const leaders = started ? table.filter((r) => r.rank === 1) : [];
+    const winners = cfg.winner ? [cfg.winner] : complete ? leaders.map((r) => r.entry.key) : [];
+    return {
+      ...cfg,
+      gws,
+      gwStates: gws.map((gw) => {
+        const gms = ms.filter((m) => m.gw === gw);
+        const state = gwComplete(model, gw) ? "done" : gms.some((m) => m.started) ? "live" : "upcoming";
+        return { gw, state, deadline: model.events.find((e) => e.id === gw).deadline };
+      }),
+      started,
+      complete,
+      table,
+      leaders,
+      winners,
+      winner: winners.length === 1 ? winners[0] : null,
+      tie: winners.length > 1,
+    };
+  }
+
+  // Each manager's chance of finishing top: play out the rest of the month thousands of
+  // times, drawing scores from each manager's average this season (with the spread of
+  // scores across the league), against the opponents they actually have left. Matches
+  // already under way keep the points they have so far as a floor.
+  function addChances(model, month, gws, table) {
+    const remaining = gws.filter((gw) => !gwComplete(model, gw));
+    const fixtures = model.matches
+      .filter((m) => remaining.includes(m.gw) && !m.finished)
+      .map((m) => ({
+        home: m.home,
+        away: m.away,
+        homePts: m.started ? m.homePts : 0,
+        awayPts: m.started ? m.awayPts : 0,
+        live: m.started,
+      }));
+
+    const seasonScores = new Map();
+    model.matches
+      .filter((m) => m.finished)
+      .forEach((m) => {
+        if (!seasonScores.has(m.home)) seasonScores.set(m.home, []);
+        if (!seasonScores.has(m.away)) seasonScores.set(m.away, []);
+        seasonScores.get(m.home).push(m.homePts);
+        seasonScores.get(m.away).push(m.awayPts);
+      });
+    const average = (xs) => xs.reduce((a, b) => a + b, 0) / xs.length;
+    const mean = new Map();
+    let squares = 0;
+    let count = 0;
+    seasonScores.forEach((xs, id) => {
+      const mu = average(xs);
+      mean.set(id, mu);
+      xs.forEach((x) => {
+        squares += (x - mu) ** 2;
+        count++;
+      });
+    });
+    const leagueMean = mean.size ? average([...mean.values()]) : 45;
+    const spread = count > 5 ? Math.sqrt(squares / count) : 13;
+
+    // The table without any match that's still going on, since those get played out again.
+    const basePts = new Map(table.map((r) => [r.entry.id, r.pts]));
+    const basePf = new Map(table.map((r) => [r.entry.id, r.pf]));
+    fixtures
+      .filter((f) => f.live)
+      .forEach((f) => {
+        basePf.set(f.home, basePf.get(f.home) - f.homePts);
+        basePf.set(f.away, basePf.get(f.away) - f.awayPts);
+        basePts.set(f.home, basePts.get(f.home) - result(f.homePts, f.awayPts));
+        basePts.set(f.away, basePts.get(f.away) - result(f.awayPts, f.homePts));
+      });
+
+    // Same inputs always give the same percentages, so they don't wobble on every refresh.
+    const rng = seededRandom(`${month}:${table.reduce((sum, r) => sum + r.pf, 0)}`);
+    const normal = () => Math.sqrt(-2 * Math.log(rng() || 1e-9)) * Math.cos(2 * Math.PI * rng());
+    const ids = table.map((r) => r.entry.id);
+    const wins = new Map(ids.map((id) => [id, 0]));
+
+    for (let i = 0; i < SIMULATIONS; i++) {
+      const pts = new Map(basePts);
+      const pf = new Map(basePf);
+      fixtures.forEach((f) => {
+        const h = Math.max(f.homePts, Math.round((mean.get(f.home) ?? leagueMean) + spread * normal()));
+        const a = Math.max(f.awayPts, Math.round((mean.get(f.away) ?? leagueMean) + spread * normal()));
+        pf.set(f.home, pf.get(f.home) + h);
+        pf.set(f.away, pf.get(f.away) + a);
+        pts.set(f.home, pts.get(f.home) + result(h, a));
+        pts.set(f.away, pts.get(f.away) + result(a, h));
+      });
+      let top = ids[0];
+      ids.forEach((id) => {
+        if (pts.get(id) > pts.get(top) || (pts.get(id) === pts.get(top) && pf.get(id) > pf.get(top))) top = id;
+      });
+      wins.set(top, wins.get(top) + 1);
+    }
+
+    // Can they still finish top at all? Best case: they win every match they have left
+    // and the other results fall so nobody passes them. Level on H2H counts as possible,
+    // because total points have no ceiling.
+    function canWin(id) {
+      const best = basePts.get(id) + 3 * fixtures.filter((f) => f.home === id || f.away === id).length;
+      const pts = new Map(basePts);
+      if ([...pts].some(([other, v]) => other !== id && v > best)) return false;
+      const others = fixtures.filter((f) => f.home !== id && f.away !== id);
+      let steps = 0;
+      const search = (i) => {
+        if (i === others.length) return true;
+        if (++steps > 300000) return true; // too many combinations to check; assume it's still on
+        const f = others[i];
+        for (const [h, a] of [[1, 1], [3, 0], [0, 3]]) {
+          if (pts.get(f.home) + h > best || pts.get(f.away) + a > best) continue;
+          pts.set(f.home, pts.get(f.home) + h);
+          pts.set(f.away, pts.get(f.away) + a);
+          const ok = search(i + 1);
+          pts.set(f.home, pts.get(f.home) - h);
+          pts.set(f.away, pts.get(f.away) - a);
+          if (ok) return true;
+        }
+        return false;
+      };
+      return search(0);
+    }
+
+    table.forEach((r) => {
+      r.chance = wins.get(r.entry.id) / SIMULATIONS;
+      r.chanceLevel = !canWin(r.entry.id) ? "out" : r.chance < 0.1 ? "maybe" : "ok";
+    });
+  }
+
+  function seededRandom(text) {
+    let seed = 2166136261;
+    for (let i = 0; i < text.length; i++) seed = Math.imul(seed ^ text.charCodeAt(i), 16777619);
+    return function () {
+      seed = (seed + 0x6d2b79f5) | 0;
+      let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
   }
 
   // Last gameweek with a deadline before Christmas Day; its final table decides the Christmas prize.
@@ -333,5 +504,5 @@
     };
   }
 
-  window.FPL = { load, gameweek, moves, standings, motm, prizeStatus, gwComplete };
+  window.FPL = { load, gameweek, moves, standings, motm, prizeStatus, gwComplete, apiBase: API_BASE };
 })();

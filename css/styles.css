@@ -183,7 +183,7 @@ a {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding-top: 20px;
+  padding-top: calc(20px + env(safe-area-inset-top)); /* clear the iPhone status bar when opened from the Home Screen */
   padding-bottom: 16px;
 }
 
@@ -498,7 +498,6 @@ h2 {
 }
 
 .prize h3,
-.month h3,
 .season h3 {
   margin: 0;
   font-family: var(--font-condensed);
@@ -530,35 +529,6 @@ h2 {
   gap: 6px;
   margin-top: auto;
   padding-top: 6px;
-}
-
-/* Month cards */
-
-.month {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.month.is-current {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 1px var(--accent), var(--shadow);
-}
-
-:root[data-theme="dark"] .month.is-current {
-  border-color: var(--title);
-  box-shadow: 0 0 0 1px var(--title), var(--shadow);
-}
-
-.month-winner {
-  font-size: 1.05rem;
-  font-weight: 700;
-}
-
-.month-team {
-  margin-top: -6px;
-  color: var(--muted);
-  font-size: 13px;
 }
 
 /* Month strip on the prizes page */
@@ -1140,48 +1110,7 @@ abbr[title] {
   }
 }
 
-/* ---------- Manager of the Month extras ---------- */
-
-.month-head {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.month-head h3 {
-  white-space: nowrap;
-}
-
-/* Every month card the same size, whatever's in it. */
-.month-grid {
-  grid-auto-rows: 1fr;
-}
-
-.month .link-btn {
-  margin-top: auto;
-}
-
-.month-leader {
-  font-weight: 700;
-}
-
-.pts-note {
-  color: var(--muted);
-  font-size: 13px;
-  font-weight: 600;
-}
-
-.link-btn {
-  align-self: flex-start;
-  padding: 0;
-  border: 0;
-  background: none;
-  color: var(--link);
-  font: 600 13px/1.5 var(--font-body);
-  cursor: pointer;
-}
-
-/* Pop-up sheet (Manager of the Month standings) */
+/* Pop-up sheet (shareable waivers image) */
 
 .sheet {
   width: min(420px, calc(100vw - 32px));
@@ -1218,33 +1147,6 @@ abbr[title] {
   height: 36px;
   font-size: 22px;
   box-shadow: none;
-}
-
-.sheet .ranking {
-  font-size: 15px;
-}
-
-.sheet .ranking li {
-  padding: 5px 0;
-  border-bottom: 1px solid var(--border);
-}
-
-.sheet .ranking li:last-child {
-  border-bottom: 0;
-}
-
-.ranking {
-  margin: 8px 0 0;
-  padding-left: 22px;
-  font-size: 14px;
-}
-
-.ranking li {
-  padding: 2px 0;
-}
-
-.ranking .pts-note {
-  float: right;
 }
 
 .leader {
@@ -1744,5 +1646,688 @@ details[open] .expand-hint::after {
     height: 12px;
     font-size: 7.5px;
     line-height: 12px;
+  }
+}
+
+/* ---------- Manager of the Month ---------- */
+
+.month-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 14px;
+  padding-bottom: 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.month-tab {
+  flex: none;
+  padding: 7px 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text);
+  font: 700 14px/1.2 var(--font-body);
+  text-align: center;
+  cursor: pointer;
+}
+
+.month-tab small {
+  display: block;
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.month-tab[aria-selected="true"] {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.month-tab[aria-selected="true"] small {
+  color: inherit;
+  opacity: 0.85;
+}
+
+.motm-hero {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px 16px;
+}
+
+.motm-hero-body {
+  display: flex;
+  flex: 1 1 180px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  min-width: 0;
+}
+
+.motm-team {
+  margin-top: 2px;
+  font-family: var(--font-heading);
+  font-size: clamp(1.5rem, 6vw, 2.2rem);
+  line-height: 1.05;
+  overflow-wrap: break-word;
+}
+
+.motm-who {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.motm-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 18px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.motm-stats b {
+  margin-right: 3px;
+  color: var(--text);
+  font-family: var(--font-heading);
+  font-size: 1.35rem;
+}
+
+.ring {
+  flex: none;
+  width: 52px;
+  height: 52px;
+  color: var(--good);
+}
+
+.ring-track,
+.ring-fill {
+  fill: none;
+  stroke-width: 4;
+}
+
+.ring-track {
+  stroke: var(--border);
+}
+
+.ring-fill {
+  stroke: var(--pending);
+  stroke-linecap: round;
+}
+
+.ring.is-won .ring-fill {
+  stroke: var(--good);
+}
+
+.ring text {
+  fill: var(--text);
+  font-family: var(--font-heading);
+  font-size: 15px;
+}
+
+.motm-prize {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  margin-left: auto;
+  text-align: right;
+}
+
+.motm-prize b {
+  color: var(--pending);
+  font-family: var(--font-heading);
+  font-size: 2.6rem;
+  line-height: 1;
+}
+
+.motm-prize.is-won b {
+  color: var(--good);
+}
+
+.motm-prize small {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.bar {
+  display: flex;
+  gap: 3px;
+  width: 130px;
+}
+
+.bar i {
+  flex: 1;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--border);
+}
+
+.bar i.done {
+  background: var(--pending);
+}
+
+.bar i.live {
+  background: var(--live);
+}
+
+.motm-gws {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 12px 0;
+}
+
+.scroll-x {
+  overflow-x: auto;
+}
+
+.motm-table {
+  min-width: 560px;
+}
+
+.motm-table th,
+.motm-table td {
+  white-space: nowrap;
+}
+
+/* Team column stays put while the gameweek columns scroll. */
+.motm-table th:first-child,
+.motm-table td:first-child {
+  position: sticky;
+  z-index: 1;
+  left: 0;
+  min-width: 190px;
+  background: var(--surface);
+  box-shadow: inset -1px 0 0 var(--border);
+}
+
+.motm-table th:first-child {
+  background: var(--surface-2);
+}
+
+.motm-table .key {
+  font-weight: 800;
+}
+
+.motm-table .best {
+  color: var(--good);
+  font-weight: 800;
+}
+
+.mgr {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.names {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+  line-height: 1.25;
+}
+
+.names b {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 170px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rank-dot {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.rank-dot.lead {
+  border-color: var(--pending);
+  background: var(--pending-bg);
+  color: var(--pending);
+}
+
+.rank-dot.ok,
+.pill-ok {
+  border-color: var(--good);
+  background: var(--good-bg);
+  color: var(--good);
+}
+
+.rank-dot.maybe,
+.pill-maybe {
+  border-color: var(--pending);
+  background: var(--pending-bg);
+  color: var(--pending);
+}
+
+.rank-dot.out,
+.pill-out {
+  border-color: var(--down);
+  background: var(--owed-bg);
+  color: var(--down);
+}
+
+.pill {
+  display: inline-block;
+  margin-top: 3px;
+  padding: 1px 8px;
+  border: 1px solid;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.motm-table tr.is-out .names b {
+  text-decoration: line-through dashed var(--down);
+  opacity: 0.7;
+}
+
+.motm-table tr.is-out td:not(:first-child) {
+  opacity: 0.5;
+}
+
+.prize-list {
+  margin: 0;
+  padding: 4px 16px;
+  list-style: none;
+}
+
+.prize-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px 12px;
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+}
+
+.prize-list li:first-child {
+  border-top: 0;
+}
+
+.prize-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.amt {
+  color: var(--pending);
+  font-weight: 700;
+}
+
+.amt.is-won {
+  color: var(--good);
+}
+
+.shot-start,
+.shot-exit {
+  display: flex;
+  justify-content: center;
+  margin: 16px 0 0;
+}
+
+.shot-exit {
+  display: none;
+}
+
+/* Screenshot view: just the leader and the H2H standings, sized to fit one phone screen. */
+body.shot .tabs,
+body.shot .theme-switch,
+body.shot .footer,
+body.shot .page-head p,
+body.shot .month-tabs,
+body.shot .motm-gws,
+body.shot .motm-rule,
+body.shot .motm-prizes,
+body.shot .shot-start,
+body.shot .alert {
+  display: none;
+}
+
+body.shot .shot-exit {
+  display: flex;
+}
+
+body.shot .view {
+  padding-bottom: 24px;
+}
+
+body.shot .page-head {
+  margin: 14px 0 10px;
+}
+
+body.shot .motm-hero {
+  flex-wrap: nowrap;
+  gap: 10px;
+  margin-bottom: 10px;
+  padding: 12px;
+}
+
+body.shot .ring {
+  width: 40px;
+  height: 40px;
+}
+
+body.shot .motm-team {
+  font-size: 1.3rem;
+}
+
+body.shot .motm-prize b {
+  font-size: 1.8rem;
+}
+
+body.shot .bar {
+  width: 90px;
+}
+
+body.shot .motm-table {
+  min-width: 0;
+}
+
+body.shot .motm-table th:nth-child(n + 4),
+body.shot .motm-table td:nth-child(n + 4),
+body.shot .pill-label,
+body.shot .names .who-sub {
+  display: none;
+}
+
+body.shot .motm-table th:first-child,
+body.shot .motm-table td:first-child {
+  position: static;
+  min-width: 0;
+  width: 100%;
+}
+
+body.shot .motm-table th,
+body.shot .motm-table td {
+  padding: 6px 8px;
+}
+
+body.shot .names {
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+}
+
+body.shot .names b {
+  max-width: 120px;
+}
+
+body.shot .mgr {
+  gap: 6px;
+}
+
+body.shot .rank-dot {
+  width: 22px;
+  height: 22px;
+  font-size: 11px;
+}
+
+body.shot .pill {
+  margin-top: 0;
+}
+
+@media (max-width: 480px) {
+  .motm-prize b {
+    font-size: 2rem;
+  }
+
+  .ring {
+    width: 44px;
+    height: 44px;
+  }
+}
+
+/* ---------- New moves: alert on Live and a dot on the Moves tab ---------- */
+
+.alert {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  margin: 16px 0 0;
+  padding: 12px 14px;
+  border-color: var(--live);
+  color: var(--text);
+  text-decoration: none;
+}
+
+.alert-icon {
+  font-size: 18px;
+}
+
+.alert-text {
+  flex: 1 1 200px;
+}
+
+.alert-go {
+  color: var(--link);
+  font-weight: 700;
+}
+
+.tab {
+  position: relative;
+}
+
+.tab.has-new::before {
+  content: "";
+  position: absolute;
+  top: 9px;
+  left: 26px;
+  width: 9px;
+  height: 9px;
+  border: 2px solid var(--surface);
+  border-radius: 50%;
+  background: var(--live);
+}
+
+@media (max-width: 699px) {
+  .tab.has-new::before {
+    top: 7px;
+    left: calc(50% + 6px);
+    border-color: var(--nav-bg);
+  }
+}
+
+/* ---------- Waivers in pick order, and the share image ---------- */
+
+.waiver-card {
+  margin-bottom: 10px;
+}
+
+.waiver-title {
+  font-family: var(--font-condensed);
+  font-size: 1.05rem;
+}
+
+.btn-small {
+  min-height: 30px;
+  margin: 0;
+  padding: 0 12px;
+  font-size: 13px;
+}
+
+.waiver-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.waiver-row {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) minmax(0, 1.3fr);
+  align-items: center;
+  gap: 4px 10px;
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+}
+
+.waiver-row:first-child {
+  border-top: 0;
+}
+
+.waiver-pick {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.waiver-who,
+.waiver-players {
+  min-width: 0;
+}
+
+.waiver-rivals {
+  grid-column: 2 / -1;
+}
+
+.move-when {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.share-preview {
+  display: block;
+  width: 100%;
+  max-height: 60vh;
+  margin: 12px 0;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  object-fit: contain;
+}
+
+.share-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.share-actions .btn {
+  display: inline-flex;
+  align-items: center;
+  margin: 0;
+  text-decoration: none;
+}
+
+/* Phones: players sit under the team rather than squeezed beside it. */
+@media (max-width: 499px) {
+  .waiver-row {
+    grid-template-columns: 28px minmax(0, 1fr);
+  }
+
+  .waiver-players,
+  .waiver-rivals {
+    grid-column: 2;
+  }
+}
+
+/* ---------- Push notifications sign-up ---------- */
+
+.push-card {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 14px;
+  margin-bottom: 16px;
+}
+
+.push-card > span {
+  flex: 1 1 220px;
+}
+
+.push-card .btn {
+  margin: 0;
+}
+
+.push-card .btn[disabled] {
+  opacity: 0.6;
+}
+
+.push-card p {
+  flex-basis: 100%;
+  margin: 0;
+}
+
+/* ---------- SUBBED IN / OUT labels, the 😂, and the table stickers ---------- */
+
+.sub-tag {
+  margin-right: 5px;
+  padding: 0 4px;
+  border-radius: 4px;
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  line-height: 15px;
+}
+
+.sub-tag.in {
+  background: var(--good-bg);
+}
+
+.sub-tag.out {
+  background: var(--owed-bg);
+}
+
+.sub-tag.in.is-pending,
+.sub-tag.out.is-pending {
+  background: var(--pending-bg);
+  color: var(--pending);
+}
+
+.lol {
+  margin-right: 3px;
+  font-size: 13px;
+}
+
+.team-cell-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.row-sticker {
+  flex: none;
+  width: 52px;
+  height: 52px;
+  margin: -12px 0;
+  object-fit: contain;
+  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.25));
+  transform: rotate(6deg);
+}
+
+.row-sticker.is-last {
+  transform: rotate(-6deg);
+}
+
+@media (max-width: 499px) {
+  .row-sticker {
+    width: 40px;
+    height: 40px;
+    margin: -8px 0;
   }
 }
