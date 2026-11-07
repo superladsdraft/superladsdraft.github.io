@@ -224,7 +224,7 @@
     return p.matches
       .map((f) =>
         f.started
-          ? `${f.home} ${f.homeScore} - ${f.awayScore} ${f.away} | ${f.done ? "FT" : matchClock(f.kickoff)}`
+          ? `${f.home} ${f.homeScore ?? 0} - ${f.awayScore ?? 0} ${f.away} | ${f.done ? "FT" : matchClock(f.kickoff)}`
           : `${f.home} v ${f.away} | ${kickoffTime(f.kickoff)}`
       )
       .join(" · ");
@@ -1323,7 +1323,7 @@
   function scoreLine(data, f) {
     const h = teamName(data, f.team_h);
     const a = teamName(data, f.team_a);
-    return f.started ? `${h} ${f.team_h_score}–${f.team_a_score} ${a}` : `${h} v ${a}`;
+    return f.started ? `${h} ${f.team_h_score ?? 0}–${f.team_a_score ?? 0} ${a}` : `${h} v ${a}`;
   }
 
   function matchState(f) {
@@ -1384,12 +1384,12 @@
       .map((f) => {
         const live = f.started && !fixtureDone(f);
         const ours = oursIn(f).length;
-        const score = f.started ? `<b>${f.team_h_score}–${f.team_a_score}</b>` : '<span class="muted">v</span>';
+        const score = f.started ? `<b>${f.team_h_score ?? 0}–${f.team_a_score ?? 0}</b>` : '<span class="muted">v</span>';
         return `
           <button type="button" class="match-box${live ? " is-live" : ""}${fixtureDone(f) ? "" : " is-current"}" data-scroll-to="match-${f.id}">
             <span class="mb-teams"><span>${esc(teamName(data, f.team_h))}</span>${score}<span>${esc(teamName(data, f.team_a))}</span></span>
             <span class="mb-state">${live ? '<span class="live-dot" aria-hidden="true"></span>' : ""}${esc(matchState(f))}</span>
-            <span class="mb-count">${ours ? `${ours} of ours` : "none of ours"}</span>
+            ${ours ? `<span class="mb-count">${ours} players</span>` : ""}
           </button>`;
       })
       .join("");
@@ -1409,9 +1409,9 @@
       ? `
         <ul class="ticks card">${feed.slice(0, FEED_SHOWN).map((l) => tickLine(l, data, owners, true)).join("")}</ul>
         ${feed.length > FEED_SHOWN ? `<details class="more" data-key="ticker-more"><summary>See all (${feed.length - FEED_SHOWN} more)</summary><ul class="ticks card">${feed.slice(FEED_SHOWN).map((l) => tickLine(l, data, owners, true)).join("")}</ul></details>` : ""}`
-      : `<section class="card notice">Nothing for our players yet.</section>`;
+      : `<section class="card notice">Nothing yet.</section>`;
 
-    // Each match that's kicked off: our players' points, then free agents tucked away.
+    // Each match that's kicked off: league players' points, then free agents tucked away.
     const branches = fixtures
       .filter((f) => f.started)
       .map((f) => {
@@ -1423,9 +1423,9 @@
           <details class="card branch" id="match-${f.id}" data-key="match-${f.id}">
             <summary class="branch-head">
               <span class="branch-score">${esc(scoreLine(data, f))}</span>
-              <span class="branch-meta">${ourLines.length ? `<span class="muted small">${ourLines.length} for ours · ${ourPoints > 0 ? "+" : ""}${ourPoints}</span>` : ""}${live ? chip("live", esc(matchState(f))) : chip("good", "FT")}</span>
+              <span class="branch-meta">${ourLines.length ? `<span class="muted small">${ourPoints > 0 ? "+" : ""}${ourPoints}</span>` : ""}${live ? chip("live", esc(matchState(f))) : chip("good", "FT")}</span>
             </summary>
-            ${ourLines.length ? `<ul class="ticks">${ourLines.map((l) => tickLine(l, data, owners, false)).join("")}</ul>` : '<p class="muted small">Nothing for our players yet.</p>'}
+            ${ourLines.length ? `<ul class="ticks">${ourLines.map((l) => tickLine(l, data, owners, false)).join("")}</ul>` : '<p class="muted small">Nothing yet.</p>'}
             ${others.length ? `<details class="more" data-key="fa-${f.id}"><summary>Free agents (${others.length})</summary><ul class="ticks">${others.map((l) => tickLine(l, data, owners, false)).join("")}</ul></details>` : ""}
           </details>`;
       })
@@ -1447,7 +1447,7 @@
               <span class="branch-score">${esc(scoreLine(data, f))}</span>
               ${chip("pending", esc(matchState(f)))}
             </div>
-            <p class="small muted">${list ? `Starters involved: ${list}` : "None of our starters"}</p>
+            <p class="small muted">${list ? list : "No starters involved"}</p>
           </li>`;
       })
       .join("");
