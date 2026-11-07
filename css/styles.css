@@ -2303,31 +2303,417 @@ body.shot .pill {
   font-size: 13px;
 }
 
-.team-cell-inner {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+/* Slimmer league table: smaller text so most team names fit on one line,
+   and the stickers sit by the position number rather than squeezing the names. */
+.league-table th,
+.league-table td {
+  padding: 8px 10px;
 }
 
-.row-sticker {
-  flex: none;
-  width: 52px;
-  height: 52px;
-  margin: -12px 0;
+.league-table td {
+  font-size: 14px;
+}
+
+.league-table .who {
+  font-size: 14px;
+  line-height: 1.25;
+}
+
+.league-table .who-sub {
+  font-size: 12px;
+}
+
+/* Sits just after the position number (the last margin number is the gap between them),
+   centred top to bottom in the row. */
+.rank-sticker {
+  display: inline-block;
+  width: 38px;
+  height: 38px;
+  margin: -8px 0 -8px 4px;
+  vertical-align: middle;
+}
+
+.rank-sticker img {
+  width: 100%;
+  height: 100%;
   object-fit: contain;
-  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.25));
-  transform: rotate(6deg);
-}
-
-.row-sticker.is-last {
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
   transform: rotate(-6deg);
 }
 
+.rank-sticker.is-last img {
+  transform: rotate(6deg);
+}
+
 @media (max-width: 499px) {
-  .row-sticker {
-    width: 40px;
-    height: 40px;
-    margin: -8px 0;
+  .league-table th,
+  .league-table td {
+    padding: 7px 6px;
   }
+
+  .league-table td,
+  .league-table .who {
+    font-size: 13px;
+  }
+
+  .league-table .who-sub {
+    font-size: 11px;
+  }
+
+  .league-table .move {
+    width: 9px;
+    margin-left: 2px;
+    font-size: 9px;
+  }
+
+  .rank-sticker {
+    width: 30px;
+    height: 30px;
+    margin-left: 3px;
+  }
+}
+
+/* ---------- Live page: rules dropdown and the table underneath ---------- */
+
+.key-card {
+  margin-top: 12px;
+  padding: 12px 16px;
+}
+
+.key-card > summary {
+  color: var(--link);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.key-card .note,
+.key-card .legend {
+  margin-top: 10px;
+}
+
+.table-head {
+  position: relative; /* the lads pop up from here */
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  margin: 30px 0 10px;
+}
+
+.table-head h2 {
+  margin: 0;
+}
+
+/* Players can be tapped for their full points. */
+.pl,
+.tick {
+  cursor: pointer;
+}
+
+.pl:focus-visible,
+.tick:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ---------- Ticker ---------- */
+
+.match-strip {
+  display: flex;
+  gap: 8px;
+  margin: 4px 0 14px;
+  padding: 2px 2px 6px;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+}
+
+.match-box {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  min-width: 118px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  color: var(--text);
+  font: inherit;
+  scroll-snap-align: start;
+  cursor: pointer;
+}
+
+.match-box.is-live {
+  border-color: var(--live);
+}
+
+.mb-teams {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.mb-teams b {
+  font-family: var(--font-heading);
+  font-size: 1.05rem;
+  font-weight: normal;
+}
+
+.mb-state {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.match-box.is-live .mb-state {
+  color: var(--live);
+}
+
+.mb-count {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.score-chips {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.score-chips > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.score-chip {
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.ticks {
+  margin: 0;
+  padding: 2px 14px;
+  list-style: none;
+}
+
+.branch .ticks {
+  padding: 0;
+}
+
+.tick {
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 0;
+  border-top: 1px solid var(--border);
+}
+
+.tick:first-child {
+  border-top: 0;
+}
+
+.tick-kit {
+  width: 26px;
+  height: 34px;
+  background: center / contain no-repeat;
+}
+
+.tick-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.tick-what,
+.tick-who {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tick-what {
+  font-size: 14px;
+}
+
+.tick-who {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.tick-pts {
+  min-width: 34px;
+  font-family: var(--font-heading);
+  font-size: 1.15rem;
+  text-align: right;
+}
+
+.tick-pts.up {
+  color: var(--good);
+}
+
+.tick-pts.down {
+  color: var(--down);
+}
+
+.tick.is-bench {
+  opacity: 0.6;
+}
+
+.tick.is-lost .tick-what b {
+  text-decoration: line-through;
+}
+
+.more {
+  margin-top: 8px;
+}
+
+.more > summary {
+  color: var(--link);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.more .ticks {
+  margin-top: 6px;
+}
+
+.branch {
+  margin-bottom: 10px;
+  scroll-margin-top: 16px;
+}
+
+.branch-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+
+.branch-score {
+  font-family: var(--font-condensed);
+  font-size: 1.1rem;
+}
+
+.branch.is-next p {
+  margin: 4px 0 0;
+}
+
+/* ---------- Player pop-up ---------- */
+
+.pop-who {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.pop-kit {
+  flex: none;
+  width: 44px;
+  height: 58px;
+  background: center / contain no-repeat;
+}
+
+.pop-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.pop-tags:empty {
+  display: none;
+}
+
+.pop-match {
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.pop-match.is-live {
+  color: var(--good);
+  font-weight: 600;
+}
+
+.pop-table {
+  margin-top: 12px;
+}
+
+.pop-table th,
+.pop-table td {
+  padding: 8px 6px;
+}
+
+.pop-table tfoot th,
+.pop-table tfoot td {
+  border-top: 2px solid var(--border);
+  border-bottom: 0;
+  font-weight: 800;
+}
+
+/* ---------- Ticker: each match is a dropdown ---------- */
+
+details.branch > summary {
+  list-style: none;
+  cursor: pointer;
+}
+
+details.branch > summary::-webkit-details-marker {
+  display: none;
+}
+
+details.branch > summary .branch-score::before {
+  content: "▸ ";
+  color: var(--muted);
+}
+
+details.branch[open] > summary .branch-score::before {
+  content: "▾ ";
+}
+
+details.branch[open] > summary {
+  margin-bottom: 8px;
+}
+
+.branch-meta {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+}
+
+.next-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.next-match {
+  padding: 8px 0;
+  border-top: 1px solid var(--border);
+  scroll-margin-top: 16px;
+}
+
+.next-match:first-child {
+  border-top: 0;
+}
+
+.next-match p {
+  margin: 2px 0 0;
 }

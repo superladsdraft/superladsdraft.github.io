@@ -57,6 +57,16 @@
     const fixtures = ctx.fixturesByTeam[el.team] || [];
     const bonus = ctx.bonus[id] || 0;
 
+    // Where the points came from (minutes, goals, def cons...), added up across their matches.
+    const breakdown = {};
+    ((ctx.stats[id] && ctx.stats[id].explain) || []).forEach(([items]) => {
+      items.forEach((item) => {
+        const b = (breakdown[item.stat] = breakdown[item.stat] || { stat: item.stat, name: item.name, value: 0, points: 0 });
+        b.value += item.value;
+        b.points += item.points;
+      });
+    });
+
     let status;
     if (fixtures.some((f) => f.started && !isDone(f))) status = stats.minutes > 0 ? "playing" : "waiting";
     else if (fixtures.some((f) => !f.started)) status = "upcoming";
@@ -75,6 +85,7 @@
       bonus,
       status,
       stats,
+      breakdown: Object.values(breakdown),
       // Their real-life match(es) this gameweek, for the "LEE 1 - 1 MUN | FT" line.
       matches: fixtures.map((f) => ({
         home: ctx.teams[f.team_h] || "",
@@ -169,5 +180,5 @@
     };
   }
 
-  window.Scoring = { context, lineup, provisionalBonus };
+  window.Scoring = { context, lineup, player, provisionalBonus };
 })();

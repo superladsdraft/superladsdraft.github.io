@@ -74,6 +74,8 @@
     const ctx = Scoring.context(bootstrap, live);
     const result = {
       gw,
+      ctx, // for looking up any player, including free agents (the Live feed uses it)
+      elements: live.elements,
       fixtures: live.fixtures,
       lineups: Object.fromEntries(
         model.entries.map((e) => [e.id, Scoring.lineup(ctx, picks[e.id].picks, picks[e.id].subs || [])])

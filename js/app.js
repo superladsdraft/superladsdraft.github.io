@@ -106,7 +106,7 @@
 
   const ICONS = {
     live: svg('<circle cx="12" cy="12" r="2"/><path d="M16.24 7.76a6 6 0 0 1 0 8.49M7.76 16.24a6 6 0 0 1 0-8.49M19.07 4.93a10 10 0 0 1 0 14.14M4.93 19.07a10 10 0 0 1 0-14.14"/>'),
-    table: svg('<path d="M10 6h11M10 12h11M10 18h11M4 6h1v4M4 10h2M6 18H4c0-1 2-2 2-3s-1-1.5-2-1"/>'),
+    ticker: svg('<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>'),
     motm: svg('<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="m12 13 1 2 2 .3-1.5 1.4.4 2.1-1.9-1-1.9 1 .4-2.1L9 15.3l2-.3z"/>'),
     moves: svg('<path d="M8 3 4 7l4 4M4 7h16M16 21l4-4-4-4M20 17H4"/>'),
     prizes: svg('<circle cx="12" cy="12" r="10"/><path d="M14.5 8.3A2.6 2.6 0 0 0 10 10v6M8.5 12.5h4M8.5 16h7"/>'),
@@ -259,28 +259,42 @@
     return `https://fantasy.premierleague.com/dist/img/shirts/standard/shirt_${p.teamCode}${keeper}-66.webp`;
   }
 
-  // Every row is the same three lines (name, stats, match) so both teams line up.
-  function playerRow(p) {
-    const status = STATUS[p.status];
-    // Amber while the swap is only "as things stand" and could still change.
+  // Amber while the swap is only "as things stand" and could still change.
+  function subTag(p) {
     const pending = p.subPending ? " is-pending" : "";
-    const subTag = p.subIn
-      ? `<span class="sub-tag in${pending}" title="${p.subPending ? "On for now, in place of" : "Auto-subbed on for"} ${esc(p.subFor || "a starter")}">SUBBED IN</span>`
-      : p.subOut
-        ? `<span class="sub-tag out${pending}" title="${p.subPending ? "Out for now, replaced by" : "Auto-subbed off for"} ${esc(p.subBy || "a bench player")}">SUBBED OUT</span>`
-        : "";
+    if (p.subIn) {
+      return `<span class="sub-tag in${pending}" title="${p.subPending ? "On for now, in place of" : "Auto-subbed on for"} ${esc(p.subFor || "a starter")}">SUBBED IN</span>`;
+    }
+    if (p.subOut) {
+      return `<span class="sub-tag out${pending}" title="${p.subPending ? "Out for now, replaced by" : "Auto-subbed off for"} ${esc(p.subBy || "a bench player")}">SUBBED OUT</span>`;
+    }
+    return "";
+  }
+
+  // Players shown on the current page, so tapping one can open their pop-up.
+  const popPlayers = new Map();
+
+  function popKey(p, entry) {
+    const key = `${entry ? entry.id : "fa"}-${p.id}`;
+    popPlayers.set(key, { p, entry });
+    return key;
+  }
+
+  // Every row is the same three lines (name, stats, match) so both teams line up.
+  function playerRow(p, entry) {
+    const status = STATUS[p.status];
     // A blank (or worse) from someone who's actually been on the pitch.
     const lol = (p.status === "played" || p.status === "playing") && p.points <= 0 ? '<span class="lol" role="img" aria-label="crying with laughter">😂</span>' : "";
     const stats = statLine(p);
     const live = p.matches.some((f) => f.started && !f.done);
     return `
-      <li class="pl st-${p.status}${p.subOut ? " is-out" : ""}">
+      <li class="pl st-${p.status}${p.subOut ? " is-out" : ""}" data-pop="${popKey(p, entry)}" tabindex="0" role="button" aria-label="${esc(p.name)}: ${p.points} points, tap for details">
         <span class="pl-kit"${p.teamCode ? ` style="background-image:url('${shirtUrl(p)}')"` : ""}>
           <span class="pl-status" title="${status.label}" aria-label="${status.label}">${status.icon}</span>
         </span>
         <span class="pl-main">
           <span class="pl-line pl-name"><span class="pl-name-text">${esc(p.name)}</span>${roleTag(p)}</span>
-          <span class="pl-line pl-stats">${subTag}${stats ? esc(stats) : availabilityFlag(p)}</span>
+          <span class="pl-line pl-stats">${subTag(p)}${stats ? esc(stats) : availabilityFlag(p)}</span>
           <span class="pl-line pl-match${live ? " is-live" : ""}">${esc(matchLine(p))}</span>
         </span>
         <span class="pl-pts">${lol}${p.points}</span>
@@ -291,15 +305,15 @@
     return `
       <div class="lineup">
         <div class="lineup-head">${esc(entry.team)}</div>
-        <ul class="players">${lu.xi.map(playerRow).join("")}</ul>
+        <ul class="players">${lu.xi.map((p) => playerRow(p, entry)).join("")}</ul>
         <div class="bench-label">Bench</div>
-        <ul class="players bench">${lu.bench.map(playerRow).join("")}</ul>
+        <ul class="players bench">${lu.bench.map((p) => playerRow(p, entry)).join("")}</ul>
       </div>`;
   }
 
   function renderLive() {
     const m = state.model;
-    if (!m) return pageHead("Live") + dataNotice();
+    if (!m) return pageHead("League") + dataNotice();
 
     const gw = state.viewGw || m.currentGw;
     const event = m.events.find((e) => e.id === gw);
@@ -359,9 +373,9 @@
     const note = m.liveError && gw === m.liveGw
       ? `Couldn't work out live scores (${esc(m.liveError.message)}), so these are FPL's own running scores.`
       : complete
-        ? "Final scores from FPL. Tap a match to see both teams."
+        ? "Final scores from FPL. Tap a match to see both teams, and a player for their full points."
         : started
-          ? "Live scores are as things stand: auto-subs happen as soon as a starter isn't on the pitch (or is ruled out by FPL), and provisional bonus is included, so they can be ahead of FPL's own numbers until the gameweek is finalised. Tap a match to see both teams."
+          ? "Live scores are as things stand: auto-subs happen as soon as a starter isn't on the pitch (or is ruled out by FPL), and provisional bonus is included, so they can be ahead of FPL's own numbers until the gameweek is finalised. Tap a match to see both teams, and a player for their full points."
           : "Teams appear here once the deadline has passed.";
 
     return `
@@ -379,13 +393,18 @@
         ${gw !== m.currentGw ? `<button type="button" class="btn btn-quiet" data-gw-step="current">Back to gameweek ${m.currentGw}</button>` : ""}
       </div>
       <div class="fixtures">${fixtures}</div>
-      <p class="note">${note}</p>
-      ${started ? `<p class="legend">${legend}</p><p class="legend"><span><span class="key-done">8</span> played, points banked</span><span><span class="key-live">3</span> playing now</span><span><span class="key-todo">0</span> still to play</span><span>😂 0 or fewer points</span></p><p class="legend"><span><span class="sub-tag in">SUBBED IN</span> / <span class="sub-tag out">SUBBED OUT</span> auto-subs, made as things stand: <span class="sub-tag in is-pending">amber</span> means it can still change, e.g. if the starter comes off the bench</span></p><p class="legend">MP minutes · G goals · A assists · CS clean sheet · GC goals conceded · S saves · DC defensive contributions · B bonus (* provisional) · YC/RC cards</p>` : ""}`;
+      <details class="card key-card" data-key="rules-key">
+        <summary>Rules &amp; key</summary>
+        <p class="note">${note}</p>
+        ${started ? `<p class="legend">${legend}</p><p class="legend"><span><span class="key-done">8</span> played, points banked</span><span><span class="key-live">3</span> playing now</span><span><span class="key-todo">0</span> still to play</span><span>😂 0 or fewer points</span></p><p class="legend"><span><span class="sub-tag in">SUBBED IN</span> / <span class="sub-tag out">SUBBED OUT</span> auto-subs, made as things stand: <span class="sub-tag in is-pending">amber</span> means it can still change, e.g. if the starter comes off the bench</span></p><p class="legend">MP minutes · G goals · A assists · CS clean sheet · GC goals conceded · S saves · DC defensive contributions · B bonus (* provisional) · YC/RC cards</p>` : ""}
+        <p class="note">Table: 3 points for a win, 1 for a draw. Level teams are split on total points scored, like on FPL.</p>
+      </details>
+      ${tableSection()}`;
   }
 
-  function renderTable() {
+  // The league table, shown under the head-to-heads on the Live page.
+  function tableSection() {
     const m = state.model;
-    if (!m) return pageHead("Table") + dataNotice();
 
     const showLive = Boolean(m.liveGw) && state.tableView === "live";
     const rows = showLive ? FPL.standings(m, m.liveGw, true) : FPL.standings(m, m.lastFinishedGw, false);
@@ -412,16 +431,16 @@
               ? `<span class="move down" title="Down ${-move}">▼</span>`
               : `<span class="move"></span>`;
         const form = r.form.map((f) => `<span class="form form-${f}">${f}</span>`).join("");
+        // Kane with the trophy for top place and a furious Haaland for last, next to the position.
         const sticker =
-          r.rank === 1
-            ? '<img class="row-sticker" src="assets/img/kane.png" alt="" title="Top of the league">'
-            : r.rank === lastRank
-              ? '<img class="row-sticker is-last" src="assets/img/haaland.png" alt="" title="Bottom of the league">'
-              : "";
+          r.rank === 1 ? ["kane.png", "Top of the league", ""] : r.rank === lastRank ? ["haaland.png", "Bottom of the league", " is-last"] : null;
+        const rankCell = sticker
+          ? `${r.rank}${move ? arrow : ""}<span class="rank-sticker${sticker[2]}" title="${sticker[1]}"><img src="assets/img/${sticker[0]}" alt=""></span>`
+          : `${r.rank}${arrow}`;
         return `
           <tr class="${r.rank <= 2 ? "is-top" : ""}">
-            <td class="rank">${r.rank}${arrow}</td>
-            <td class="team-cell"><div class="team-cell-inner"><div><span class="who">${esc(r.entry.team)}</span><span class="who-sub">${esc(r.entry.nickname)}</span></div>${sticker}</div></td>
+            <td class="rank">${rankCell}</td>
+            <td class="team-cell"><span class="who">${esc(r.entry.team)}</span><span class="who-sub">${esc(r.entry.nickname)}</span></td>
             <td class="num wide">${r.won}</td>
             <td class="num wide">${r.drawn}</td>
             <td class="num wide">${r.lost}</td>
@@ -440,7 +459,10 @@
         : "No gameweeks finished yet.";
 
     return `
-      ${pageHead("Table", caption)}
+      <div class="table-head">
+        <h2 id="league-table">Table</h2>
+        <span class="muted small">${caption}</span>
+      </div>
       ${toggle}
       <section class="card table-card">
         <table class="league-table">
@@ -459,8 +481,7 @@
           </thead>
           <tbody>${body}</tbody>
         </table>
-      </section>
-      <p class="note">3 points for a win, 1 for a draw. Level teams are split on total points scored, like on FPL.</p>`;
+      </section>`;
   }
 
   function motmSelected(list) {
@@ -992,7 +1013,7 @@
   function renderMoves() {
     const head = pageHead(
       "Waivers &amp; trades",
-      "Each gameweek's waivers in the order they were picked, then free-agent signings and trades, newest first."
+      "Newest first. Each gameweek's waivers are listed in the order they were picked, with any free-agent signings and trades made since sitting above them."
     );
     if (!state.model) return head + dataNotice();
 
@@ -1019,10 +1040,16 @@
       .map((gw) => {
         const waivers = waiversFor(gw);
         const others = items.filter((i) => i.gw === gw && i.type !== "waiver");
+        // Free-agent signings (and trades) made after the waiver claims go in sit above the waivers.
+        const lastClaim = waivers.reduce((latest, w) => (w.time > latest ? w.time : latest), "");
+        const newer = others.filter((i) => i.time > lastClaim);
+        const older = others.filter((i) => i.time <= lastClaim);
+        const cards = (list) => (list.length ? `<div class="moves">${list.map(moveCard).join("")}</div>` : "");
         return `
           <h2>Gameweek ${gw}</h2>
+          ${cards(newer)}
           ${waivers.length ? waiverList(gw, waivers) : ""}
-          ${others.length ? `<div class="moves">${others.map(moveCard).join("")}</div>` : ""}`;
+          ${cards(older)}`;
       })
       .join("");
 
@@ -1174,7 +1201,7 @@
 
     c.fillStyle = v("--title");
     c.font = '96px "Supercharge Halftone", Impact, sans-serif';
-    c.fillText("SUPER LADS", PAD, 118);
+    c.fillText("\"MIKE'S APP\"", PAD, 118);
     c.fillStyle = "rgba(255, 255, 255, 0.85)";
     c.font = '44px "Supercharge Condensed", Impact, sans-serif';
     c.fillText(`GAMEWEEK ${gw} WAIVERS`, PAD, 172);
@@ -1261,18 +1288,229 @@
       </div>`;
   }
 
+  // ---------- Ticker: live match updates ----------
+
+  const fixtureDone = (f) => f.finished || f.finished_provisional;
+  let tickerCache = { data: null };
+
+  // Who owns each player this gameweek, and whether they're in the side that counts.
+  function ownership(data) {
+    const owners = new Map();
+    Object.entries(data.lineups).forEach(([entryId, lu]) => {
+      const entry = state.model.entryById[entryId];
+      lu.xi.forEach((p) => owners.set(p.id, { entry, counts: true, player: p }));
+      lu.bench.forEach((p) => owners.set(p.id, { entry, counts: false, player: p }));
+    });
+    return owners;
+  }
+
+  // Runs on every data refresh (whatever page is open), so new points get stamped when they appear.
+  function tickerFor(data) {
+    if (tickerCache.data !== data) {
+      const owners = ownership(data);
+      tickerCache = { data, owners, ...Ticker.update(data.gw, data.elements, new Set(owners.keys())) };
+    }
+    return tickerCache;
+  }
+
+  function tickTime(at) {
+    const mins = Math.round((Date.now() - at) / 60000);
+    return mins < 1 ? "just now" : mins < 60 ? `${mins}m ago` : timeFormat.format(new Date(at));
+  }
+
+  const teamName = (data, teamId) => data.ctx.teams[teamId] || "";
+
+  function scoreLine(data, f) {
+    const h = teamName(data, f.team_h);
+    const a = teamName(data, f.team_a);
+    return f.started ? `${h} ${f.team_h_score}–${f.team_a_score} ${a}` : `${h} v ${a}`;
+  }
+
+  function matchState(f) {
+    return fixtureDone(f) ? "FT" : f.started ? matchClock(f.kickoff_time) : kickoffTime(f.kickoff_time);
+  }
+
+  // One line of the feed: what happened, to whom, whose player, and the points.
+  function tickLine(line, data, owners, showMatch) {
+    const o = owners.get(line.id);
+    const p = o ? o.player : Scoring.player(data.ctx, line.id);
+    const lost = Boolean(line.lostAt);
+    // New since we started watching: show what it added. Seen on the first look: show the total.
+    const pts = line.at ? line.delta : line.points;
+    const f = data.fixtures.find((x) => x.id === line.fixture);
+    const bits = [o ? `${esc(o.entry.team)}${o.counts ? "" : " (bench)"}` : "Free agent"];
+    if (showMatch && f) bits.push(esc(scoreLine(data, f)));
+    if (line.at) bits.push(tickTime(line.at));
+    return `
+      <li class="tick${lost ? " is-lost" : ""}${o && !o.counts ? " is-bench" : ""}" data-pop="${popKey(p, o && o.entry)}" tabindex="0" role="button">
+        <span class="tick-kit"${p.teamCode ? ` style="background-image:url('${shirtUrl(p)}')"` : ""}></span>
+        <span class="tick-main">
+          <span class="tick-what">${Ticker.ICONS[line.stat] || "•"} <b>${esc(Ticker.label(line.stat, line.value))}${lost ? " gone" : ""}</b> · ${esc(p.name)} <span class="muted">${esc(p.team)}</span></span>
+          <span class="tick-who">${bits.join(" · ")}</span>
+        </span>
+        <span class="tick-pts ${pts > 0 ? "up" : pts < 0 ? "down" : ""}">${pts > 0 ? "+" : pts < 0 ? "−" : ""}${Math.abs(pts)}</span>
+      </li>`;
+  }
+
+  function renderTicker() {
+    const head = pageHead("Live Point's Tracker", "Every point your players pick up, newest first. Appearance points are left out so it doesn't go mad at 1 and 60 minutes.");
+    const m = state.model;
+    if (!m) return head + dataNotice();
+
+    const gw = m.currentGw;
+    const event = m.events.find((e) => e.id === gw);
+    if (!m.matches.some((x) => x.gw === gw && x.started)) {
+      return `${head}<section class="card notice">Gameweek ${gw} kicks off after the deadline, ${deadlineFormat.format(new Date(event.deadline))}. Updates start once the first game does.</section>`;
+    }
+    const data = gameweekData(gw);
+    if (!data) {
+      return head + (gameweekErrors[gw] ? `<section class="card notice notice-error">Couldn't load the gameweek: ${esc(gameweekErrors[gw].message)}</section>` : `<section class="card notice">Loading gameweek ${gw}…</section>`);
+    }
+
+    const { owners, lines, all } = tickerFor(data);
+    const teamOf = (id) => (data.ctx.elements[id] || {}).team;
+    const order = (f) => (f.started && !fixtureDone(f) ? 0 : !f.started ? 1 : 2);
+    const fixtures = data.fixtures
+      .slice()
+      .sort((a, b) => order(a) - order(b) || (order(a) === 2 ? b.kickoff_time.localeCompare(a.kickoff_time) : a.kickoff_time.localeCompare(b.kickoff_time)));
+
+    // League players (in a side that counts) involved in a match.
+    const oursIn = (f) => [...owners.values()].filter((o) => o.counts && [f.team_h, f.team_a].includes(teamOf(o.player.id)));
+
+    // The quick-glance strip runs in kick-off order; it opens on the first game that's live or still to come.
+    const boxes = data.fixtures
+      .slice()
+      .sort((a, b) => a.kickoff_time.localeCompare(b.kickoff_time))
+      .map((f) => {
+        const live = f.started && !fixtureDone(f);
+        const ours = oursIn(f).length;
+        const score = f.started ? `<b>${f.team_h_score}–${f.team_a_score}</b>` : '<span class="muted">v</span>';
+        return `
+          <button type="button" class="match-box${live ? " is-live" : ""}${fixtureDone(f) ? "" : " is-current"}" data-scroll-to="match-${f.id}">
+            <span class="mb-teams"><span>${esc(teamName(data, f.team_h))}</span>${score}<span>${esc(teamName(data, f.team_a))}</span></span>
+            <span class="mb-state">${live ? '<span class="live-dot" aria-hidden="true"></span>' : ""}${esc(matchState(f))}</span>
+            <span class="mb-count">${ours ? `${ours} of ours` : "none of ours"}</span>
+          </button>`;
+      })
+      .join("");
+
+    const scores = Object.entries(data.lineups)
+      .map(([id, lu]) => ({ entry: m.entryById[id], score: lu.score }))
+      .sort((a, b) => b.score - a.score)
+      .map((x) => `<span class="score-chip"><b>${esc(x.entry.nickname)}</b> ${x.score}</span>`)
+      .join("");
+
+    const kickoff = (line) => (data.fixtures.find((f) => f.id === line.fixture) || {}).kickoff_time || "";
+    const feed = lines
+      .slice()
+      .sort((a, b) => (b.at || 0) - (a.at || 0) || kickoff(b).localeCompare(kickoff(a)) || Math.abs(b.points) - Math.abs(a.points));
+    const FEED_SHOWN = 15;
+    const feedHtml = feed.length
+      ? `
+        <ul class="ticks card">${feed.slice(0, FEED_SHOWN).map((l) => tickLine(l, data, owners, true)).join("")}</ul>
+        ${feed.length > FEED_SHOWN ? `<details class="more" data-key="ticker-more"><summary>See all (${feed.length - FEED_SHOWN} more)</summary><ul class="ticks card">${feed.slice(FEED_SHOWN).map((l) => tickLine(l, data, owners, true)).join("")}</ul></details>` : ""}`
+      : `<section class="card notice">Nothing for our players yet.</section>`;
+
+    // Each match that's kicked off: our players' points, then free agents tucked away.
+    const branches = fixtures
+      .filter((f) => f.started)
+      .map((f) => {
+        const ourLines = lines.filter((l) => l.fixture === f.id).sort((a, b) => b.points - a.points);
+        const others = all.filter((l) => l.fixture === f.id && !owners.has(l.id)).sort((a, b) => b.points - a.points);
+        const live = !fixtureDone(f);
+        const ourPoints = ourLines.reduce((sum, l) => sum + l.points, 0);
+        return `
+          <details class="card branch" id="match-${f.id}" data-key="match-${f.id}">
+            <summary class="branch-head">
+              <span class="branch-score">${esc(scoreLine(data, f))}</span>
+              <span class="branch-meta">${ourLines.length ? `<span class="muted small">${ourLines.length} for ours · ${ourPoints > 0 ? "+" : ""}${ourPoints}</span>` : ""}${live ? chip("live", esc(matchState(f))) : chip("good", "FT")}</span>
+            </summary>
+            ${ourLines.length ? `<ul class="ticks">${ourLines.map((l) => tickLine(l, data, owners, false)).join("")}</ul>` : '<p class="muted small">Nothing for our players yet.</p>'}
+            ${others.length ? `<details class="more" data-key="fa-${f.id}"><summary>Free agents (${others.length})</summary><ul class="ticks">${others.map((l) => tickLine(l, data, owners, false)).join("")}</ul></details>` : ""}
+          </details>`;
+      })
+      .join("");
+
+    // Matches still to come, with how many of each manager's starters are in them.
+    const upcoming = fixtures
+      .filter((f) => !f.started)
+      .map((f) => {
+        const counts = {};
+        oursIn(f).forEach((o) => (counts[o.entry.nickname] = (counts[o.entry.nickname] || 0) + 1));
+        const list = Object.entries(counts)
+          .sort((a, b) => b[1] - a[1])
+          .map(([name, n]) => `<b>${esc(name)}</b> ${n}`)
+          .join(", ");
+        return `
+          <li class="next-match" id="match-${f.id}">
+            <div class="branch-head">
+              <span class="branch-score">${esc(scoreLine(data, f))}</span>
+              ${chip("pending", esc(matchState(f)))}
+            </div>
+            <p class="small muted">${list ? `Starters involved: ${list}` : "None of our starters"}</p>
+          </li>`;
+      })
+      .join("");
+    const toCome = fixtures.filter((f) => !f.started).length;
+
+    return `
+      ${head}
+      <div class="match-strip" role="list">${boxes}</div>
+      <section class="card score-chips"><span class="stat-label">GW${gw} so far</span><div>${scores}</div></section>
+      <h2>Latest</h2>
+      ${feedHtml}
+      <h2>By match</h2>
+      ${branches}
+      ${upcoming ? `<details class="card branch" id="still-to-come" data-key="still-to-come"><summary class="branch-head"><span class="branch-score">Still to come</span><span class="muted small">${toCome} game${toCome === 1 ? "" : "s"}</span></summary><ul class="next-list">${upcoming}</ul></details>` : ""}`;
+  }
+
+  // ---------- Player pop-up ----------
+
+  function openPlayerSheet(key) {
+    const hit = popPlayers.get(key);
+    if (!hit) return;
+    const { p, entry } = hit;
+    const signed = (n) => (n > 0 ? `+${n}` : n < 0 ? `−${Math.abs(n)}` : "0");
+    const rows = p.breakdown
+      .map((b) => `<tr><td>${esc(b.name)}</td><td class="num">${b.value}</td><td class="num">${signed(b.points)}</td></tr>`)
+      .concat(p.bonus ? [`<tr><td>Bonus (provisional)</td><td class="num">${p.bonus}</td><td class="num">${signed(p.bonus)}</td></tr>`] : [])
+      .join("");
+    const live = p.matches.some((f) => f.started && !f.done);
+    sheet.innerHTML = `
+      <div class="sheet-body">
+        <div class="sheet-head">
+          <div class="pop-who">
+            <span class="pop-kit"${p.teamCode ? ` style="background-image:url('${shirtUrl(p)}')"` : ""}></span>
+            <div>
+              <h2>${esc(p.name)}</h2>
+              <div class="muted small">${esc(p.position)} · ${esc(p.team)} · ${entry ? `${esc(entry.team)} (${esc(entry.nickname)})` : "Free agent"}</div>
+            </div>
+          </div>
+          <button type="button" class="icon-btn" data-close aria-label="Close">×</button>
+        </div>
+        <div class="pop-tags">${roleTag(p)}${subTag(p)}${availabilityFlag(p)}</div>
+        <p class="pop-match${live ? " is-live" : ""}">${esc(matchLine(p))}</p>
+        <table class="pop-table">
+          <thead><tr><th>What</th><th class="num">Count</th><th class="num">Pts</th></tr></thead>
+          <tbody>${rows || '<tr><td colspan="3" class="muted">No points yet.</td></tr>'}</tbody>
+          <tfoot><tr><th>Total</th><td></td><td class="num">${p.points}</td></tr></tfoot>
+        </table>
+      </div>`;
+    sheet.showModal();
+  }
+
   // ---------- Routing ----------
 
   const ROUTES = {
-    table: { label: "Table", title: "Table", render: renderTable },
+    ticker: { label: "Live", title: "Live", render: renderTicker }, // the live points feed
     motm: { label: "MOTM", title: "Manager of the Month", render: renderMotm },
-    live: { label: "Live", title: "Live", render: renderLive },
+    live: { label: "League", title: "League", render: renderLive }, // head-to-heads and the table
     moves: { label: "Moves", title: "Waivers & trades", render: renderMoves },
     prizes: { label: "Prizes", title: "Prizes", render: renderPrizes },
   };
   const DEFAULT_ROUTE = "live";
   const SITE_NAME = document.title; // set in index.html
-  const ALIASES = { history: "prizes" }; // old Hall of Fame links
+  const ALIASES = { history: "prizes", table: "live" }; // old links: Hall of Fame, and the table now on Live
 
   document.getElementById("tabs").innerHTML = Object.entries(ROUTES)
     .map(([id, r]) => `<a class="tab" href="#${id}" data-route="${id}">${ICONS[id]}<span>${r.label}</span></a>`)
@@ -1284,18 +1522,21 @@
     return ROUTES[requested] ? requested : DEFAULT_ROUTE;
   }
 
-  // The lads pop up next to the Table heading for a moment each time someone opens the Table tab.
-  // Data refreshes redraw the page, so the photo is put back where its animation had got to.
+  // The lads pop up next to the Table heading for a moment, once per visit to the Live page,
+  // when the table scrolls into view. Data refreshes redraw the page, so the photo is put back
+  // where its animation had got to.
   const LADS_SRC = "assets/img/lads.png";
   const LADS_MS = 2000;
   let ladsStart = 0;
+  let ladsDue = false;
+  let ladsObserver = null;
   let lastRoute = null;
   new Image().src = LADS_SRC; // load it up front so it's ready the first time
 
   function showLads(arrived) {
     if (arrived) ladsStart = performance.now();
     const elapsed = performance.now() - ladsStart;
-    const head = view.querySelector(".page-head");
+    const head = view.querySelector(".table-head");
     if (!ladsStart || elapsed >= LADS_MS || !head) return;
 
     const img = document.createElement("img");
@@ -1318,6 +1559,27 @@
     animation.onfinish = () => img.remove();
   }
 
+  function watchTableForLads(arrived) {
+    if (arrived) {
+      ladsDue = true;
+      ladsStart = 0;
+    }
+    if (ladsObserver) ladsObserver.disconnect();
+    if (ladsStart) return showLads(false);
+    const head = view.querySelector(".table-head");
+    if (!ladsDue || !head || !("IntersectionObserver" in window)) return;
+    ladsObserver = new IntersectionObserver(
+      (entries) => {
+        if (!entries.some((x) => x.isIntersecting)) return;
+        ladsObserver.disconnect();
+        ladsDue = false;
+        showLads(true);
+      },
+      { threshold: 0.6 }
+    );
+    ladsObserver.observe(head);
+  }
+
   function render() {
     const id = currentRoute();
     const arrived = id !== lastRoute;
@@ -1325,8 +1587,17 @@
     if (id !== "motm") state.shot = false;
     document.body.classList.toggle("shot", state.shot);
     if (id === "moves" && moves.items) markMovesSeen(arrived); // before drawing, so this visit badges them "New"
+    popPlayers.clear();
+    const oldStrip = view.querySelector(".match-strip");
+    const stripScroll = oldStrip ? oldStrip.scrollLeft : 0;
     view.innerHTML = ROUTES[id].render();
-    if (id === "table") showLads(arrived);
+    const strip = view.querySelector(".match-strip");
+    if (strip) {
+      // Keep the strip where it was across refreshes; on arrival, start at the next game that matters.
+      const first = strip.querySelector(".is-current");
+      strip.scrollLeft = !arrived && oldStrip ? stripScroll : first ? first.offsetLeft - strip.offsetLeft : 0;
+    }
+    if (id === "live") watchTableForLads(arrived);
     document.querySelector('.tab[data-route="moves"]').classList.toggle("has-new", moves.unseen.length > 0);
     if (id === "motm") centreMonthTab();
     view.querySelectorAll("details[data-key]").forEach((d) => {
@@ -1360,6 +1631,21 @@
       const gw = Math.min(m.lastGw, Math.max(1, to));
       state.viewGw = gw === m.currentGw ? null : gw;
       render();
+      return;
+    }
+    const pop = e.target.closest("[data-pop]");
+    if (pop) {
+      openPlayerSheet(pop.dataset.pop);
+      return;
+    }
+    const jump = e.target.closest("[data-scroll-to]");
+    if (jump) {
+      const target = document.getElementById(jump.dataset.scrollTo);
+      if (target) {
+        const dropdown = target.closest("details");
+        if (dropdown) dropdown.open = true;
+        target.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
       return;
     }
     const monthTab = e.target.closest("[data-motm-month]");
@@ -1420,6 +1706,14 @@
     }
   });
 
+  view.addEventListener("keydown", (e) => {
+    const pop = (e.key === "Enter" || e.key === " ") && e.target.closest("[data-pop]");
+    if (pop) {
+      e.preventDefault();
+      openPlayerSheet(pop.dataset.pop);
+    }
+  });
+
   // <details> toggle events don't bubble, so listen in the capture phase.
   view.addEventListener(
     "toggle",
@@ -1448,6 +1742,7 @@
       state.error = err;
     }
     state.loading = false;
+    if (state.model && state.model.live) tickerFor(state.model.live);
     movesData();
     render();
     if (state.error && state.error.code === "not-connected") return;
